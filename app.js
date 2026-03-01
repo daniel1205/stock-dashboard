@@ -1,11 +1,14 @@
 const stockList = document.getElementById('stockList');
 const stockInput = document.getElementById('stockInput');
 const addBtn = document.getElementById('addBtn');
+const refreshBtn = document.getElementById('refreshBtn');
 const lastUpdate = document.getElementById('lastUpdate');
 const loading = document.getElementById('loading');
+const autoRefreshStatus = document.getElementById('autoRefreshStatus');
 
 // 從 localStorage 讀取股票列表
 let stocks = JSON.parse(localStorage.getItem('stocks')) || ['AAPL', 'TSLA'];
+let autoRefreshInterval = null;
 
 // 判斷是否為台股
 function isTaiwanStock(symbol) {
@@ -185,13 +188,20 @@ function saveStocks() {
     localStorage.setItem('stocks', JSON.stringify(stocks));
 }
 
+// 更新自動更新狀態顯示
+function updateAutoRefreshStatus() {
+    if (autoRefreshStatus) {
+        autoRefreshStatus.textContent = '⏱️ 每 3 分鐘自動更新';
+    }
+}
+
 // 載入所有股票
 async function loadStocks() {
     if (stocks.length === 0) {
         stockList.innerHTML = `
             <div class="empty-state">
                 <p>尚無股票</p>
-                <div class="hint">輸入股票代號 (如: AAPL, TSLA, 2330, 0050)</div>
+                <div class="hint">輸入股票代號 (台股: 2330, 0050 | 美股: AAPL, TSLA)</div>
             </div>
         `;
         return;
@@ -219,14 +229,24 @@ async function loadStocks() {
     });
 }
 
+// 啟動自動更新
+function startAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    autoRefreshInterval = setInterval(loadStocks, 180000); // 3 分鐘 = 180,000 毫秒
+    updateAutoRefreshStatus();
+}
+
 // 事件監聽
 addBtn.addEventListener('click', addStock);
+refreshBtn.addEventListener('click', loadStocks);
 stockInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addStock();
 });
 
-// 自動更新 (每 30 秒)
-setInterval(loadStocks, 30000);
+// 啟動自動更新 (每 3 分鐘)
+startAutoRefresh();
 
 // 頁面載入時執行
 loadStocks();

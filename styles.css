@@ -19,7 +19,7 @@ body {
 
 header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 header h1 {
@@ -30,12 +30,27 @@ header h1 {
 .last-update {
     color: #888;
     font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.auto-refresh-status {
+    color: #00d4aa;
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
 }
 
 .add-stock {
     display: flex;
     gap: 10px;
-    margin-bottom: 30px;
+    flex: 1;
+    min-width: 250px;
 }
 
 .add-stock input {
@@ -73,6 +88,29 @@ header h1 {
 .add-stock button:hover {
     background: #00b894;
     transform: translateY(-2px);
+}
+
+.refresh-btn {
+    padding: 12px 20px;
+    border: 2px solid #00d4aa;
+    border-radius: 8px;
+    background: transparent;
+    color: #00d4aa;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.refresh-btn:hover {
+    background: #00d4aa;
+    color: #1a1a2e;
+    transform: translateY(-2px);
+}
+
+.refresh-btn:active {
+    transform: translateY(0);
 }
 
 .stock-list {
@@ -199,6 +237,14 @@ header h1 {
 @media (max-width: 600px) {
     header h1 {
         font-size: 1.5rem;
+    }
+    
+    .controls {
+        flex-direction: column;
+    }
+    
+    .refresh-btn {
+        width: 100%;
     }
     
     .stock-card {

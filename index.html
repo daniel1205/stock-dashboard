@@ -11,11 +11,15 @@
         <header>
             <h1>📈 股票即時看板</h1>
             <div class="last-update">最後更新: <span id="lastUpdate">--</span></div>
+            <div class="auto-refresh-status" id="autoRefreshStatus">⏱️ 每 3 分鐘自動更新</div>
         </header>
 
-        <div class="add-stock">
-            <input type="text" id="stockInput" placeholder="輸入股票代號 (台股: 2330, 0050 | 美股: AAPL, TSLA)" maxlength="20">
-            <button id="addBtn">新增</button>
+        <div class="controls">
+            <div class="add-stock">
+                <input type="text" id="stockInput" placeholder="輸入股票代號 (台股: 2330, 0050 | 美股: AAPL, TSLA)" maxlength="20">
+                <button id="addBtn">新增</button>
+            </div>
+            <button id="refreshBtn" class="refresh-btn" title="立即更新股價">🔄 更新股價</button>
         </div>
 
         <div class="stock-list" id="stockList">
