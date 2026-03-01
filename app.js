@@ -16,13 +16,31 @@ try {
 }
 // 如果 localStorage 是空陣列或無效，使用預設值
 if (!Array.isArray(stocks) || stocks.length === 0) {
-    stocks = ['AAPL', 'TSLA'];
+    stocks = ['2330', '0050', 'AAPL'];
     localStorage.setItem('stocks', JSON.stringify(stocks));
 }
+// 移除重複的股票代號
+stocks = [...new Set(stocks)];
+localStorage.setItem('stocks', JSON.stringify(stocks));
 
 let autoRefreshInterval = null;
 
-console.log('Loaded stocks:', stocks);
+// CORS Proxy 列表（備援機制）
+const proxyList = [
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest='
+];
+let currentProxyIndex = 0;
+
+function getProxyUrl() {
+    return proxyList[currentProxyIndex];
+}
+
+function switchProxy() {
+    currentProxyIndex = (currentProxyIndex + 1) % proxyList.length;
+    console.log(`Switching to proxy: ${getProxyUrl()}`);
+}
 
 // 判斷是否為台股
 function isTaiwanStock(symbol) {
@@ -37,31 +55,58 @@ function formatTWSymbol(symbol) {
     return symbol;
 }
 
+// 帶重試機制的 fetch
+async function fetchWithRetry(url, maxRetries = 2) {
+    for (let i = 0; i <= maxRetries; i++) {
+        try {
+            const proxyUrl = getProxyUrl();
+            const response = await fetch(proxyUrl + encodeURIComponent(url), {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                return response;
+            }
+            
+            if (i < maxRetries) {
+                switchProxy();
+                await new Promise(r => setTimeout(r, 500)); // 等待 500ms 後重試
+            }
+        } catch (error) {
+            console.log(`Fetch attempt ${i + 1} failed:`, error.message);
+            if (i < maxRetries) {
+                switchProxy();
+                await new Promise(r => setTimeout(r, 500));
+            }
+        }
+    }
+    throw new Error('所有 proxy 都無法連線');
+}
+
 // 證交所 API 取得台股資料
 async function fetchTWSEData(symbol) {
     try {
         const code = formatTWSymbol(symbol);
-        // 使用證交所 API (需透過 CORS 代理)
-        const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${code}.tw|otc_${code}.tw`;
-        console.log(`Fetching TWSE: ${code}`);
         
-        const response = await fetch(proxyUrl + encodeURIComponent(twseUrl));
-        
-        if (!response.ok) {
-            throw new Error('無法取得證交所資料: ' + response.status);
-        }
-        
+        const response = await fetchWithRetry(twseUrl, 2);
         const data = await response.json();
-        console.log(`TWSE response for ${code}:`, data);
         
         if (!data.msgArray || data.msgArray.length === 0) {
             throw new Error('股票資料不存在');
         }
         
         const stock = data.msgArray[0];
-        const price = parseFloat(stock.z) || parseFloat(stock.y); // 現價或昨收
+        const price = parseFloat(stock.z) || parseFloat(stock.y);
         const previousClose = parseFloat(stock.y);
+        
+        if (isNaN(price) || isNaN(previousClose)) {
+            throw new Error('價格資料無效');
+        }
+        
         const change = price - previousClose;
         const changePercent = (change / previousClose) * 100;
         
@@ -82,16 +127,9 @@ async function fetchTWSEData(symbol) {
 // Yahoo Finance API 取得美股資料
 async function fetchYahooData(symbol) {
     try {
-        const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-        console.log(`Fetching Yahoo: ${symbol}`);
         
-        const response = await fetch(proxyUrl + encodeURIComponent(yahooUrl));
-        
-        if (!response.ok) {
-            throw new Error('無法取得 Yahoo 資料: ' + response.status);
-        }
-        
+        const response = await fetchWithRetry(yahooUrl, 2);
         const data = await response.json();
         
         if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
@@ -103,6 +141,11 @@ async function fetchYahooData(symbol) {
         
         const currentPrice = meta.regularMarketPrice || meta.previousClose;
         const previousClose = meta.previousClose || meta.chartPreviousClose;
+        
+        if (!currentPrice || !previousClose) {
+            throw new Error('價格資料無效');
+        }
+        
         const change = currentPrice - previousClose;
         const changePercent = (change / previousClose) * 100;
         
@@ -216,8 +259,6 @@ function updateAutoRefreshStatus() {
 
 // 載入所有股票
 async function loadStocks() {
-    console.log('Loading stocks:', stocks);
-    
     if (stocks.length === 0) {
         stockList.innerHTML = `
             <div class="empty-state">
@@ -241,7 +282,6 @@ async function loadStocks() {
             successCount++;
         } else {
             failCount++;
-            console.error(`Failed to load: ${symbol}`);
         }
     }
     
@@ -264,8 +304,6 @@ async function loadStocks() {
         minute: '2-digit',
         second: '2-digit'
     });
-    
-    console.log(`Loaded: ${successCount} success, ${failCount} failed`);
 }
 
 // 啟動自動更新
@@ -273,7 +311,7 @@ function startAutoRefresh() {
     if (autoRefreshInterval) {
         clearInterval(autoRefreshInterval);
     }
-    autoRefreshInterval = setInterval(loadStocks, 180000); // 3 分鐘 = 180,000 毫秒
+    autoRefreshInterval = setInterval(loadStocks, 180000); // 3 分鐘
     updateAutoRefreshStatus();
 }
 
@@ -284,7 +322,7 @@ stockInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addStock();
 });
 
-// 啟動自動更新 (每 3 分鐘)
+// 啟動自動更新
 startAutoRefresh();
 
 // 頁面載入時執行
