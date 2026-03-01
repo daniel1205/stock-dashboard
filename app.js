@@ -6,9 +6,23 @@ const lastUpdate = document.getElementById('lastUpdate');
 const loading = document.getElementById('loading');
 const autoRefreshStatus = document.getElementById('autoRefreshStatus');
 
-// 從 localStorage 讀取股票列表
-let stocks = JSON.parse(localStorage.getItem('stocks')) || ['AAPL', 'TSLA'];
+// 從 localStorage 讀取股票列表（若為空或無效則使用預設值）
+let storedStocks = localStorage.getItem('stocks');
+let stocks = [];
+try {
+    stocks = JSON.parse(storedStocks) || [];
+} catch (e) {
+    stocks = [];
+}
+// 如果 localStorage 是空陣列或無效，使用預設值
+if (!Array.isArray(stocks) || stocks.length === 0) {
+    stocks = ['AAPL', 'TSLA'];
+    localStorage.setItem('stocks', JSON.stringify(stocks));
+}
+
 let autoRefreshInterval = null;
+
+console.log('Loaded stocks:', stocks);
 
 // 判斷是否為台股
 function isTaiwanStock(symbol) {
@@ -30,13 +44,16 @@ async function fetchTWSEData(symbol) {
         // 使用證交所 API (需透過 CORS 代理)
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${code}.tw|otc_${code}.tw`;
+        console.log(`Fetching TWSE: ${code}`);
+        
         const response = await fetch(proxyUrl + encodeURIComponent(twseUrl));
         
         if (!response.ok) {
-            throw new Error('無法取得證交所資料');
+            throw new Error('無法取得證交所資料: ' + response.status);
         }
         
         const data = await response.json();
+        console.log(`TWSE response for ${code}:`, data);
         
         if (!data.msgArray || data.msgArray.length === 0) {
             throw new Error('股票資料不存在');
@@ -67,10 +84,12 @@ async function fetchYahooData(symbol) {
     try {
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+        console.log(`Fetching Yahoo: ${symbol}`);
+        
         const response = await fetch(proxyUrl + encodeURIComponent(yahooUrl));
         
         if (!response.ok) {
-            throw new Error('無法取得 Yahoo 資料');
+            throw new Error('無法取得 Yahoo 資料: ' + response.status);
         }
         
         const data = await response.json();
@@ -141,7 +160,7 @@ function showError(message) {
     errorDiv.className = 'error-message';
     errorDiv.textContent = message;
     stockList.insertBefore(errorDiv, stockList.firstChild);
-    setTimeout(() => errorDiv.remove(), 3000);
+    setTimeout(() => errorDiv.remove(), 5000);
 }
 
 // 新增股票
@@ -197,6 +216,8 @@ function updateAutoRefreshStatus() {
 
 // 載入所有股票
 async function loadStocks() {
+    console.log('Loading stocks:', stocks);
+    
     if (stocks.length === 0) {
         stockList.innerHTML = `
             <div class="empty-state">
@@ -210,15 +231,31 @@ async function loadStocks() {
     loading.style.display = 'block';
     stockList.innerHTML = '';
     
-    const stockData = await Promise.all(stocks.map(fetchStockData));
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const symbol of stocks) {
+        const data = await fetchStockData(symbol);
+        if (data) {
+            stockList.innerHTML += renderStockCard(data);
+            successCount++;
+        } else {
+            failCount++;
+            console.error(`Failed to load: ${symbol}`);
+        }
+    }
     
     loading.style.display = 'none';
     
-    stockData.forEach(data => {
-        if (data) {
-            stockList.innerHTML += renderStockCard(data);
-        }
-    });
+    if (failCount > 0 && successCount === 0) {
+        stockList.innerHTML = `
+            <div class="empty-state">
+                <p>⚠️ 無法載入股票資料</p>
+                <div class="hint">請檢查網路連線或股票代號是否正確</div>
+            </div>
+        `;
+        showError('資料載入失敗，請點擊「更新股價」重試');
+    }
     
     // 更新時間
     const now = new Date();
@@ -227,6 +264,8 @@ async function loadStocks() {
         minute: '2-digit',
         second: '2-digit'
     });
+    
+    console.log(`Loaded: ${successCount} success, ${failCount} failed`);
 }
 
 // 啟動自動更新
