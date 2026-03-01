@@ -10,8 +10,10 @@ let stocks = JSON.parse(localStorage.getItem('stocks')) || ['AAPL', 'TSLA'];
 // Yahoo Finance API 取得股票資料
 async function fetchStockData(symbol) {
     try {
-        // 使用 Yahoo Finance 查詢 API
-        const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`);
+        // 使用 CORS 代理呼叫 Yahoo Finance API
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+        const response = await fetch(proxyUrl + encodeURIComponent(yahooUrl));
         
         if (!response.ok) {
             throw new Error('股票代號不存在或無法取得資料');
@@ -25,7 +27,6 @@ async function fetchStockData(symbol) {
         
         const result = data.chart.result[0];
         const meta = result.meta;
-        const quote = result.indicators?.quote?.[0];
         
         const currentPrice = meta.regularMarketPrice || meta.previousClose;
         const previousClose = meta.previousClose || meta.chartPreviousClose;
