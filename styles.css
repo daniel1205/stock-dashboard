@@ -163,8 +163,8 @@ header h1 {
     gap: 5px;
 }
 
-.stock-price .change.up {
-    color: #ff6b6b;
+.stock-price .change.up, .stock-price .change {
+    color: #ff6b6b; /* 漲 */
 }
 
 .stock-price .change.down {
@@ -178,7 +178,7 @@ header h1 {
 .delete-btn {
     background: rgba(255, 107, 107, 0.2);
     border: none;
-    color: #ff6b6b;
+    color: #ff6b6b; /* 漲 */
     padding: 8px 12px;
     border-radius: 6px;
     cursor: pointer;
@@ -227,7 +227,7 @@ header h1 {
 
 .error-message {
     background: rgba(255, 107, 107, 0.1);
-    color: #ff6b6b;
+    color: #ff6b6b; /* 漲 */
     padding: 10px 15px;
     border-radius: 8px;
     margin-bottom: 15px;
