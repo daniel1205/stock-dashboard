@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票即時看板</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 股票即時看板</h1>
+            <div class="last-update">最後更新: <span id="lastUpdate">--</span></div>
+        </header>
+
+        <div class="add-stock">
+            <input type="text" id="stockInput" placeholder="輸入股票代號 (如: AAPL, TSLA, 2330.TW)" maxlength="20">
+            <button id="addBtn">新增</button>
+        </div>
+
+        <div class="stock-list" id="stockList">
+            <!-- 股票卡片會動態插入這裡 -->
+        </div>
+
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>載入中...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
